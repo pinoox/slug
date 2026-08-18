@@ -12,7 +12,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: npm
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,7 +49,7 @@ jobs:
             echo "  - Organization: pinoox"
             echo "  - Repository: slug"
             echo "  - Workflow filename: publish.yml"
-            echo "  - Environment name: npm"
+            echo "  - Environment name: (leave blank unless this job uses environment: npm)"
             echo "  - Allowed actions: npm publish"
             exit 1
           fi
