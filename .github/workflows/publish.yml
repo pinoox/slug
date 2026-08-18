@@ -36,6 +36,10 @@ jobs:
           fi
 
       - name: Verify package is reachable on the registry
+        # Catches the "trusted publisher not configured" case before we
+        # attempt to publish. If the trusted publisher hasn't been set
+        # up on the npm package page, npm returns 404 here and we
+        # surface a clear error.
         run: |
           PKG=$(node -p "require('./package.json').name")
           ENCODED=$(node -p "encodeURIComponent(require('./package.json').name)")

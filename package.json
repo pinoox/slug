@@ -83,7 +83,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pinoox/slug"
+    "url": "git+https://github.com/pinoox/slug.git"
   },
   "homepage": "https://github.com/pinoox/slug#readme",
   "bugs": {
