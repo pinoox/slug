@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,7 +22,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          registry-url: https://registry.npmjs.org
 
       - name: Upgrade npm for Trusted Publishing
         run: npm install -g npm@latest
@@ -41,17 +41,6 @@ jobs:
           ENCODED=$(node -p "encodeURIComponent(require('./package.json').name)")
           if ! curl -fsSL "https://registry.npmjs.org/${ENCODED}" -o /dev/null; then
             echo "::error::Package '${PKG}' is not reachable on the npm registry."
-            echo ""
-            echo "This usually means the npm Trusted Publisher hasn't been configured yet."
-            echo "Go to: https://www.npmjs.com/package/${PKG}/settings/trusted-publishers"
-            echo ""
-            echo "Required values:"
-            echo "  - Provider: GitHub Actions"
-            echo "  - Organization: pinoox"
-            echo "  - Repository: slug"
-            echo "  - Workflow filename: publish.yml"
-            echo "  - Environment name: (leave blank unless this job uses environment: npm)"
-            echo "  - Allowed actions: npm publish"
             exit 1
           fi
           echo "Package ${PKG} is reachable on the registry."
@@ -60,4 +49,4 @@ jobs:
         run: npm ci
 
       - name: Publish to npm (Trusted Publisher)
-        run: npm publish --provenance --access public
+        run: npm publish --access public
