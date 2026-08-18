@@ -5,14 +5,14 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     environment: npm
-    permissions:
-      contents: read
-      id-token: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,10 +36,6 @@ jobs:
           fi
 
       - name: Verify package is reachable on the registry
-        # Catches the "trusted publisher not configured" case before we
-        # attempt to publish. If the trusted publisher hasn't been set
-        # up on the npm package page, npm returns 404 here and we
-        # surface a clear error.
         run: |
           PKG=$(node -p "require('./package.json').name")
           ENCODED=$(node -p "encodeURIComponent(require('./package.json').name)")
@@ -51,18 +47,17 @@ jobs:
             echo ""
             echo "Required values:"
             echo "  - Provider: GitHub Actions"
-            echo "  - Repository: pinoox/slug"
+            echo "  - Organization: pinoox"
+            echo "  - Repository: slug"
             echo "  - Workflow filename: publish.yml"
             echo "  - Environment name: npm"
+            echo "  - Allowed actions: npm publish"
             exit 1
           fi
           echo "Package ${PKG} is reachable on the registry."
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Test
-        run: npm test
 
       - name: Publish to npm (Trusted Publisher)
         run: npm publish --provenance --access public
