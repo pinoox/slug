@@ -1,6 +1,6 @@
 {
   "name": "@pinooxhq/slug",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Persian-to-Finglish transliteration and URL slugs for Vue, React, Svelte, and vanilla JS.",
   "type": "module",
   "main": "./dist/index.cjs",
