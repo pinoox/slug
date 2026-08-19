@@ -1,6 +1,22 @@
 export { toFinglish, toPinglish } from './core/toFinglish';
-export { slugify } from './core/slugify';
+export { slugify, createSlugify, slugifyWithCounter } from './core/slugify';
 export { sanitizeSlug } from './core/sanitize';
-export { extendLoanwords, resetLoanwords, DEFAULT_LOANWORDS } from './core/loanwords';
+export {
+  extendLoanwords,
+  resetLoanwords,
+  extendDictionary,
+  resetDictionary,
+  DEFAULT_LOANWORDS,
+  DEFAULT_CMS_DICTIONARY,
+} from './core/dictionary';
 export { extendWords, resetWords } from './core/words';
-export type { SlugifyOptions, LoanwordMap, WordMap } from './core/types';
+export { PERSIAN_STOPWORDS } from './core/text';
+export type {
+  SlugifyOptions,
+  SlugifyFn,
+  LoanwordMap,
+  WordMap,
+  DictionaryMap,
+  DictionaryOption,
+  SanitizeSlugOptions,
+} from './core/types';

@@ -24,5 +24,6 @@ export default defineConfig([
     sourcemap: true,
     clean: false,
     minify: true,
+    outExtension: () => ({ js: '.global.js' }),
   },
 ]);

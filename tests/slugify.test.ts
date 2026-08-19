@@ -1,13 +1,25 @@
-import { describe, it } from 'node:test';
+import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  createSlugify,
+  extendDictionary,
   extendLoanwords,
+  resetDictionary,
   resetLoanwords,
+  resetWords,
   sanitizeSlug,
   slugify,
+  slugifyWithCounter,
   toFinglish,
   toPinglish,
+  extendWords,
 } from '../src/index.ts';
+
+afterEach(() => {
+  resetLoanwords();
+  resetDictionary();
+  resetWords();
+});
 
 describe('slugify', () => {
   it('restores English loanwords written in Persian', () => {
@@ -31,6 +43,11 @@ describe('slugify', () => {
 
   it('accepts slugify-style options', () => {
     assert.equal(slugify('سلام دنیا', { replacement: '_' }), 'salam_donya');
+    assert.equal(slugify('سلام دنیا', { separator: '_' }), 'salam_donya');
+  });
+
+  it('splits on punctuation', () => {
+    assert.equal(slugify('سلام، دنیا!'), 'salam-donya');
   });
 });
 
@@ -50,7 +67,6 @@ describe('toFinglish', () => {
   it('allows extra loanwords', () => {
     extendLoanwords({ پینوکس: 'pinoox' });
     assert.equal(slugify('پینوکس شاپ'), 'pinoox-shop');
-    resetLoanwords();
   });
 });
 
@@ -58,5 +74,9 @@ describe('sanitizeSlug', () => {
   it('keeps url-safe characters while typing', () => {
     assert.equal(sanitizeSlug('Laptop Gamer!'), 'laptopgamer');
     assert.equal(sanitizeSlug('lap--top'), 'lap-top');
+  });
+
+  it('can preserve a trailing dash', () => {
+    assert.equal(sanitizeSlug('lap-top-', { preserveTrailingDash: true }), 'lap-top-');
   });
 });

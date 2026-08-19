@@ -1,9 +1,11 @@
 import { ref } from 'vue';
 import { sanitizeSlug, slugify } from '../index';
+import type { SlugifyOptions } from '../index';
 
 export interface UseSlugFieldOptions {
   manualKey?: string;
   onTitleInput?: (value: string) => void;
+  slugify?: SlugifyOptions;
 }
 
 export function useSlugField(
@@ -17,10 +19,10 @@ export function useSlugField(
 
   const onTitleInput = (val: string) => {
     options.onTitleInput?.(val);
-    if (!isManual()) form.slug = slugify(val);
+    if (!isManual()) form.slug = slugify(val, options.slugify);
   };
 
-  const resolveSlug = (title: string) => (form.slug || slugify(title)).trim();
+  const resolveSlug = (title: string) => (form.slug || slugify(title, options.slugify)).trim();
 
   const resetSlugManual = () => {
     form[manualKey] = false;
@@ -34,7 +36,9 @@ export function useSlugField(
 
   const onSlugInput = (value: string) => {
     slugTouched.value = true;
-    form.slug = sanitizeSlug(value);
+    form.slug = sanitizeSlug(value, {
+      preserveTrailingDash: options.slugify?.preserveTrailingDash,
+    });
   };
 
   return {

@@ -4,14 +4,16 @@
 
 Persian → Finglish, then a URL-safe slug. Works in **vanilla JS**, **Vue**, **React**, and **Svelte**. Zero runtime dependencies.
 
-Conversion is **heja-based** (Persian syllables): any word is split into CV/CVC/CVCC units, written vowels (`ا`/`و`/`ی`) are kept, and missing short vowels are inserted. There is no fixed dictionary of Persian words. `extendLoanwords` is only for English words written in Persian (`لپتاپ` → `laptop`). `extendWords` is an optional exact-word override.
+Conversion is **heja-based** (Persian syllables): any unknown word is split into CV/CVC/CVCC units. A built-in **CMS + tech dictionary** maps common terms first (`محصولات` → `product`, `لپتاپ` → `laptop`). Turn it off per call when you want pure Finglish.
 
 ```js
 import { slugify, toFinglish } from '@pinooxhq/slug'
 
-toFinglish('سلام دنیا')     // 'salam donya'
-slugify('سلام دنیا')        // 'salam-donya'
-slugify('لپتاپ گیمینگ')     // 'laptop-gaming'
+toFinglish('سلام دنیا')                 // 'salam donya'
+slugify('سلام دنیا')                    // 'salam-donya'
+slugify('محصولات جدید')                 // 'product-jadid'
+slugify('محصولات جدید', { dictionary: false }) // heja only
+slugify('لپتاپ گیمینگ')                  // 'laptop-gaming'
 ```
 
 ## Install
@@ -25,7 +27,7 @@ npm i @pinooxhq/slug
 ESM:
 
 ```js
-import { toFinglish, toPinglish, slugify, sanitizeSlug, extendLoanwords } from '@pinooxhq/slug'
+import { toFinglish, slugify, sanitizeSlug, createSlugify } from '@pinooxhq/slug'
 
 slugify('کتابخانه')           // 'ketabkhane'
 sanitizeSlug('Lap--Top!')     // 'laptop'
@@ -52,11 +54,9 @@ Script tag (IIFE):
 import { useSlugField } from '@pinooxhq/slug/vue'
 
 const form = reactive({ title: '', slug: '', slugManual: false })
-const { onTitleInput, onSlugInput, resolveSlug } = useSlugField(form)
-
-onTitleInput(form.title)          // fills form.slug unless the user edited it
-onSlugInput(rawValue)             // sanitizes while typing
-const slug = resolveSlug(title)   // form.slug or a generated slug
+const { onTitleInput, onSlugInput, resolveSlug } = useSlugField(form, {
+  slugify: { prefix: 'shop' },
+})
 ```
 
 ## React
@@ -66,7 +66,7 @@ import { useSlugField } from '@pinooxhq/slug/react'
 
 function ProductForm() {
   const [title, setTitle] = useState('')
-  const { slug, onSlugInput } = useSlugField(title)
+  const { slug, onSlugInput } = useSlugField(title, { slugify: { prefix: 'shop' } })
   return (
     <>
       <input value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -83,56 +83,99 @@ import { writable } from 'svelte/store'
 import { slugField } from '@pinooxhq/slug/svelte'
 
 const title = writable('')
-const { slug, onSlugInput } = slugField(title)
+const { slug, onSlugInput } = slugField(title, { slugify: { prefix: 'shop' } })
 ```
 
 ## API
 
-### `toFinglish(text)` / `toPinglish(text)`
-
-Romanize Persian to Finglish. Latin text is left as-is. `toPinglish` is an alias of `toFinglish`.
-
 ### `slugify(text, options?)`
 
-`toFinglish`, then a URL slug.
+`toFinglish`, then a URL slug: `{prefix}-{body}-{suffix}-{hash}`.
+
+```js
+slugify('محصولات جدید', {
+  prefix: 'shop',
+  suffix: 'fa',
+  hash: 42,          // stable seed (id / sku). Prefer this over hash: true
+  hashLength: 6,
+})
+// 'shop-product-jadid-fa-xxxxxx'
+
+slugify('محصولات جدید', { dictionary: false })
+// Finglish only — no CMS/tech replacements
+```
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `replacement` | `'-'` | Separator between words |
+| `dictionary` | `true` | `true` uses CMS+tech maps; `false` disables them; object merges extra entries for this call |
+| `prefix` | — | Sanitized prefix |
+| `suffix` / `postfix` | — | Sanitized suffix (literal extra, e.g. `v2`) |
+| `hash` | — | `true` hashes the title (changes if the title changes); string/number is a stable seed |
+| `hashLength` | `6` | Hash length (`[a-z0-9]`, minimum 2) |
+| `replacement` / `separator` | `'-'` | Separator between words |
 | `lower` | `true` | Lowercase the result |
-| `strict` | `true` | Keep only `[a-z0-9]` plus the separator |
+| `strict` | `true` | Keep only `[a-z0-9]` plus the separator (Persian kept if `transliterate: false`) |
 | `trim` | `true` | Strip leading/trailing separators |
+| `maxLength` | — | Truncate on a separator; room is reserved for prefix/suffix/hash |
+| `stopwords` | — | `true` drops `و از به در را که با`; or pass a custom list |
+| `symbols` | `true` | `&` → `and`, `%` → `percent`, `+` → `plus` |
+| `decamelize` | `true` | `fooBar` → `foo-bar` |
+| `transliterate` | `true` | `false` keeps Persian letters in the slug |
+| `preserveTrailingDash` | `false` | Keep a trailing separator while typing |
+| `customReplacements` | — | `[['@', ' at ']]` replacements before conversion |
 | `remove` | — | Extra `RegExp` to strip before separators |
 
+### `createSlugify(defaults)`
+
+Instance with default options (no global mutation):
+
 ```js
-slugify('سلام دنیا', { replacement: '_' })  // 'salam_donya'
+const shopSlug = createSlugify({
+  prefix: 'shop',
+  hashLength: 8,
+  dictionary: { پینوکس: 'pinoox' },
+})
+
+shopSlug('پینوکس محصولات', { hash: productId })
+shopSlug('محصولات جدید', { dictionary: false })
 ```
 
-### `sanitizeSlug(text)`
+### `slugifyWithCounter(defaults?)`
+
+Same slug twice becomes `title`, then `title-2` (useful for heading ids). Call `.reset()` to clear.
+
+### `toFinglish(text, options?)` / `toPinglish(text)`
+
+Romanize Persian to Finglish. Accepts the same `dictionary` / `stopwords` / `symbols` flags. Latin text is left as-is.
+
+### `sanitizeSlug(text, options?)`
 
 Keep URL-safe characters while the user types a slug by hand. Spaces and punctuation are dropped (not turned into dashes).
 
 ```js
 sanitizeSlug('Laptop Gamer!')  // 'laptopgamer'
 sanitizeSlug('lap--top')       // 'lap-top'
+sanitizeSlug('lap-top-', { preserveTrailingDash: true }) // 'lap-top-'
 ```
 
-### `extendLoanwords(map)`
+### Dictionary
 
-English loanwords written in Persian cannot be recovered by letter-mapping (`لپتاپ` → `lptap`). Built-in entries cover common tech words; add more for your domain:
+Built-in maps (token match, longest key first — `موسسه` is not `mouse`):
+
+- **CMS:** `محصولات` → `product`, `دسته` → `category`, `مقاله` → `article`, …
+- **Tech loanwords:** `لپتاپ` → `laptop`, `گیمینگ` → `gaming`, …
 
 ```js
+import { extendDictionary, extendLoanwords, extendWords } from '@pinooxhq/slug'
+
+extendDictionary({ برند: 'brand' })
 extendLoanwords({ پینوکس: 'pinoox' })
-slugify('پینوکس شاپ')  // 'pinoox-shop'
+extendWords({ تهران: 'tehran' }) // Finglish spelling override only
 ```
 
-### `extendWords(map)`
+`extendLoanwords` stays for compatibility. Prefer `createSlugify({ dictionary })` so apps do not share global state.
 
-Optional exact-word override. The heja engine already converts any Persian word; use this only when a specific spelling must win.
-
-```js
-extendWords({ تهران: 'tehran' })
-```
+If you pass `hash: true`, the suffix changes whenever the title changes. For CMS records, pass a stable id: `{ hash: product.id }`.
 
 ## TypeScript
 

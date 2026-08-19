@@ -1,3 +1,4 @@
+import { normalizeDictKey } from './dictionary';
 import type { WordMap } from './types';
 
 /**
@@ -17,5 +18,13 @@ export function resetWords(): void {
 }
 
 export function lookupWord(word: string): string | undefined {
-  return extraWords[word];
+  if (extraWords[word] !== undefined) return extraWords[word];
+  const normalized = normalizeDictKey(word);
+  if (normalized !== word && extraWords[normalized] !== undefined) {
+    return extraWords[normalized];
+  }
+  for (const [key, value] of Object.entries(extraWords)) {
+    if (normalizeDictKey(key) === normalized) return value;
+  }
+  return undefined;
 }

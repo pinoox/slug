@@ -1,11 +1,14 @@
 {
   "name": "@pinooxhq/slug",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Persian-to-Finglish transliteration and URL slugs for Vue, React, Svelte, and vanilla JS.",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "unpkg": "./dist/pinoox-slug.global.js",
+  "jsdelivr": "./dist/pinoox-slug.global.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -32,14 +35,15 @@
     "dist",
     "README.md",
     "README.fa.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
-    "prepublishOnly": "npm run build"
+    "test": "tsx --test tests/slugify.test.ts tests/dictionary.test.ts tests/affix-hash.test.ts",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "peerDependencies": {
     "react": ">=18",

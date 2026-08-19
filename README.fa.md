@@ -4,14 +4,16 @@
 
 تبدیل فارسی به فینگلیش، سپس اسلاگ امن برای URL. روی **Vanilla JS**، **Vue**، **React** و **Svelte** کار می‌کند. بدون وابستگی زمان اجرا.
 
-تبدیل بر اساس **هجا** است: هر واژه به واحدهای CV/CVC/CVCC شکسته می‌شود، مصوت‌های نوشته‌شده (`ا`/`و`/`ی`) حفظ می‌شوند و مصوت‌های کوتاه نانوشته درج می‌شوند. فهرست ثابتی از واژه‌های فارسی وجود ندارد. `extendLoanwords` فقط برای وام‌واژه‌های انگلیسی با املای فارسی است (`لپتاپ` → `laptop`). `extendWords` بازنویسی اختیاری یک واژه است.
+تبدیل بر اساس **هجا** است: هر واژهٔ ناشناخته به واحدهای CV/CVC/CVCC شکسته می‌شود. **دیکشنری CMS و فناوری** اول اعمال می‌شود (`محصولات` → `product`، `لپتاپ` → `laptop`). برای هر فراخوانی می‌توان آن را خاموش کرد.
 
 ```js
 import { slugify, toFinglish } from '@pinooxhq/slug'
 
-toFinglish('سلام دنیا')     // 'salam donya'
-slugify('سلام دنیا')        // 'salam-donya'
-slugify('لپتاپ گیمینگ')     // 'laptop-gaming'
+toFinglish('سلام دنیا')                 // 'salam donya'
+slugify('سلام دنیا')                    // 'salam-donya'
+slugify('محصولات جدید')                 // 'product-jadid'
+slugify('محصولات جدید', { dictionary: false }) // فقط هجا
+slugify('لپتاپ گیمینگ')                  // 'laptop-gaming'
 ```
 
 ## نصب
@@ -25,7 +27,7 @@ npm i @pinooxhq/slug
 ESM:
 
 ```js
-import { toFinglish, toPinglish, slugify, sanitizeSlug, extendLoanwords } from '@pinooxhq/slug'
+import { toFinglish, slugify, sanitizeSlug, createSlugify } from '@pinooxhq/slug'
 
 slugify('کتابخانه')           // 'ketabkhane'
 sanitizeSlug('Lap--Top!')     // 'laptop'
@@ -52,11 +54,9 @@ const { slugify } = require('@pinooxhq/slug')
 import { useSlugField } from '@pinooxhq/slug/vue'
 
 const form = reactive({ title: '', slug: '', slugManual: false })
-const { onTitleInput, onSlugInput, resolveSlug } = useSlugField(form)
-
-onTitleInput(form.title)          // form.slug را پر می‌کند مگر کاربر دستی ویرایش کرده باشد
-onSlugInput(rawValue)             // هنگام تایپ اسلاگ را پاکسازی می‌کند
-const slug = resolveSlug(title)   // form.slug یا اسلاگ تولیدشده
+const { onTitleInput, onSlugInput, resolveSlug } = useSlugField(form, {
+  slugify: { prefix: 'shop' },
+})
 ```
 
 ## React
@@ -66,7 +66,7 @@ import { useSlugField } from '@pinooxhq/slug/react'
 
 function ProductForm() {
   const [title, setTitle] = useState('')
-  const { slug, onSlugInput } = useSlugField(title)
+  const { slug, onSlugInput } = useSlugField(title, { slugify: { prefix: 'shop' } })
   return (
     <>
       <input value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -83,56 +83,99 @@ import { writable } from 'svelte/store'
 import { slugField } from '@pinooxhq/slug/svelte'
 
 const title = writable('')
-const { slug, onSlugInput } = slugField(title)
+const { slug, onSlugInput } = slugField(title, { slugify: { prefix: 'shop' } })
 ```
 
 ## API
 
-### `toFinglish(text)` / `toPinglish(text)`
-
-رومی‌سازی فارسی به فینگلیش. متن لاتین دست‌نخورده می‌ماند. `toPinglish` نام مستعار `toFinglish` است.
-
 ### `slugify(text, options?)`
 
-ابتدا `toFinglish`، سپس اسلاگ URL.
+ابتدا `toFinglish`، سپس اسلاگ: `{prefix}-{body}-{suffix}-{hash}`.
+
+```js
+slugify('محصولات جدید', {
+  prefix: 'shop',
+  suffix: 'fa',
+  hash: 42,          // seed پایدار (id / sku). بهتر از hash: true
+  hashLength: 6,
+})
+// 'shop-product-jadid-fa-xxxxxx'
+
+slugify('محصولات جدید', { dictionary: false })
+// فقط فینگلیش — بدون جایگزینی CMS/فناوری
+```
 
 | گزینه | پیش‌فرض | معنی |
 | --- | --- | --- |
-| `replacement` | `'-'` | جداکننده بین کلمات |
+| `dictionary` | `true` | `true` نقشهٔ CMS+فناوری؛ `false` خاموش؛ آبجکت برای ادغام در همین فراخوانی |
+| `prefix` | — | پیشوند پاکسازی‌شده |
+| `suffix` / `postfix` | — | پسوند متنی (مثلاً `v2`) |
+| `hash` | — | `true` از عنوان هش می‌گیرد (با تغییر عنوان عوض می‌شود)؛ رشته/عدد seed پایدار است |
+| `hashLength` | `6` | طول هش (`[a-z0-9]`، حداقل ۲) |
+| `replacement` / `separator` | `'-'` | جداکننده |
 | `lower` | `true` | حروف کوچک |
-| `strict` | `true` | فقط `[a-z0-9]` به‌علاوه جداکننده |
+| `strict` | `true` | فقط `[a-z0-9]` به‌علاوه جداکننده (با `transliterate: false` حروف فارسی می‌مانند) |
 | `trim` | `true` | حذف جداکننده از ابتدا و انتها |
-| `remove` | — | `RegExp` اضافی برای حذف قبل از جداکننده‌ها |
+| `maxLength` | — | برش روی جداکننده؛ جا برای prefix/suffix/hash رزرو می‌شود |
+| `stopwords` | — | `true` واژه‌های `و از به در را که با` را حذف می‌کند؛ یا فهرست سفارشی |
+| `symbols` | `true` | `&` → `and`، `%` → `percent`، `+` → `plus` |
+| `decamelize` | `true` | `fooBar` → `foo-bar` |
+| `transliterate` | `true` | `false` حروف فارسی را در اسلاگ نگه می‌دارد |
+| `preserveTrailingDash` | `false` | حفظ جداکنندهٔ انتهایی هنگام تایپ |
+| `customReplacements` | — | جایگزینی قبل از تبدیل، مثل `[['@', ' at ']]` |
+| `remove` | — | `RegExp` اضافی قبل از جداکننده‌ها |
+
+### `createSlugify(defaults)`
+
+نمونه با پیش‌فرض، بدون تغییر سراسری:
 
 ```js
-slugify('سلام دنیا', { replacement: '_' })  // 'salam_donya'
+const shopSlug = createSlugify({
+  prefix: 'shop',
+  hashLength: 8,
+  dictionary: { پینوکس: 'pinoox' },
+})
+
+shopSlug('پینوکس محصولات', { hash: productId })
+shopSlug('محصولات جدید', { dictionary: false })
 ```
 
-### `sanitizeSlug(text)`
+### `slugifyWithCounter(defaults?)`
+
+اسلاگ تکراری می‌شود `title` سپس `title-2` (برای id تیتر). با `.reset()` پاک می‌شود.
+
+### `toFinglish(text, options?)` / `toPinglish(text)`
+
+رومی‌سازی فارسی به فینگلیش. همان فلگ‌های `dictionary` / `stopwords` / `symbols` را می‌گیرد. متن لاتین دست‌نخورده می‌ماند.
+
+### `sanitizeSlug(text, options?)`
 
 هنگام تایپ دستی اسلاگ، فقط کاراکترهای امن URL را نگه می‌دارد. فاصله و علائم حذف می‌شوند (به خط تیره تبدیل نمی‌شوند).
 
 ```js
 sanitizeSlug('Laptop Gamer!')  // 'laptopgamer'
 sanitizeSlug('lap--top')       // 'lap-top'
+sanitizeSlug('lap-top-', { preserveTrailingDash: true }) // 'lap-top-'
 ```
 
-### `extendLoanwords(map)`
+### دیکشنری
 
-وام‌واژه‌های انگلیسی که با فارسی نوشته شده‌اند با نگاشت حروف بازیابی نمی‌شوند (`لپتاپ` → `lptap`). ورودی‌های داخلی واژه‌های رایج فناوری را پوشش می‌دهند؛ برای دامنه خودتان موارد بیشتری اضافه کنید:
+نقشه‌های داخلی (تطبیق توکن، طولانی‌ترین کلید اول — `موسسه` نمی‌شود `mouse`):
+
+- **CMS:** `محصولات` → `product`، `دسته` → `category`، `مقاله` → `article`، …
+- **وام‌واژه فناوری:** `لپتاپ` → `laptop`، `گیمینگ` → `gaming`، …
 
 ```js
+import { extendDictionary, extendLoanwords, extendWords } from '@pinooxhq/slug'
+
+extendDictionary({ برند: 'brand' })
 extendLoanwords({ پینوکس: 'pinoox' })
-slugify('پینوکس شاپ')  // 'pinoox-shop'
+extendWords({ تهران: 'tehran' }) // فقط املای فینگلیش
 ```
 
-### `extendWords(map)`
+`extendLoanwords` برای سازگاری مانده است. برای اپ‌ها `createSlugify({ dictionary })` بهتر است تا state سراسری اشتراک نشود.
 
-بازنویسی اختیاری یک واژه. موتور هجا هر واژه فارسی را تبدیل می‌کند؛ این فقط وقتی لازم است که یک املای خاص باید برنده شود.
-
-```js
-extendWords({ تهران: 'tehran' })
-```
+اگر `hash: true` بدهید، با تغییر عنوان هش عوض می‌شود. برای رکورد CMS شناسهٔ پایدار بدهید: `{ hash: product.id }`.
 
 ## TypeScript
 
